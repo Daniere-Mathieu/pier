@@ -29,7 +29,7 @@ pub enum CliSubcommand {
     #[structopt(alias = "rm")]
     Remove {
         /// The alias or name for the script.
-        alias: String,
+        alias: Vec<String>,
     },
     /// alias: init - Add a config file.
     #[structopt(alias = "init")]
@@ -37,7 +37,7 @@ pub enum CliSubcommand {
     /// Edit a script matching alias.
     Edit {
         /// The alias or name for the script.
-        alias: String,
+        alias: Option<String>,
     },
     /// Show a script matching alias.
     Show {

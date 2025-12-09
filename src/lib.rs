@@ -1,4 +1,4 @@
-use prettytable::{cell, row, Table};
+use prettytable::{row, Table};
 use snafu::{ensure, OptionExt, ResultExt};
 use std::fs;
 use std::{path::PathBuf, process::ExitStatus};
@@ -28,22 +28,22 @@ pub struct Pier {
 #[macro_use]
 extern crate lazy_static;
 
-use prettytable::format::LineSeparator;
-use prettytable::format::LinePosition;
 use prettytable::format::FormatBuilder;
+use prettytable::format::LinePosition;
+use prettytable::format::LineSeparator;
 use prettytable::format::TableFormat;
 
 lazy_static! {
-    static ref COOL_SEP: LineSeparator = LineSeparator::new('\u{2256}', '\u{2256}', '\u{2256}', '\u{2256}');
-
+    static ref COOL_SEP: LineSeparator =
+        LineSeparator::new('\u{2256}', '\u{2256}', '\u{2256}', '\u{2256}');
     pub static ref COOL_FORMAT: TableFormat = FormatBuilder::new()
-      .column_separator('\u{22EE}')
-      .borders('\u{22EE}')
-      .separator(LinePosition::Title, *COOL_SEP)
-      .separator(LinePosition::Bottom, *COOL_SEP)
-      .separator(LinePosition::Top, *COOL_SEP)
-      .padding(1, 1)
-      .build();
+        .column_separator('\u{22EE}')
+        .borders('\u{22EE}')
+        .separator(LinePosition::Title, *COOL_SEP)
+        .separator(LinePosition::Bottom, *COOL_SEP)
+        .separator(LinePosition::Top, *COOL_SEP)
+        .padding(1, 1)
+        .build();
 }
 
 impl Pier {
@@ -68,13 +68,16 @@ impl Pier {
             }
         };
 
-        &self.add_script(Script {
-            alias: String::from("hello-pier"),
-            command: String::from("echo Hello, Pier!"),
-            description: Some(String::from("This is an example command.")),
-            reference: None,
-            tags: None,
-        }, false);
+        let _ = self.add_script(
+            Script {
+                alias: String::from("hello-pier"),
+                command: String::from("echo Hello, from Pier!, you should try edit this script with pier edit hello-pier !"),
+                description: Some(String::from("This is an example command.")),
+                reference: None,
+                tags: None,
+            },
+            false,
+        );
 
         self.write()?;
 
@@ -110,13 +113,9 @@ impl Pier {
     pub fn fetch_script(&self, alias: &str) -> PierResult<&Script> {
         ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
 
-        let script = self
-            .config
-            .scripts
-            .get(alias)
-            .context(AliasNotFound {
-                alias: &alias.to_string(),
-            })?;
+        let script = self.config.scripts.get(alias).context(AliasNotFound {
+            alias: &alias.to_string(),
+        })?;
 
         Ok(script)
     }
@@ -125,13 +124,9 @@ impl Pier {
     pub fn edit_script(&mut self, alias: &str) -> PierResult<&Script> {
         ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
 
-        let mut script =
-            self.config
-                .scripts
-                .get_mut(alias)
-                .context(AliasNotFound {
-                    alias: &alias.to_string(),
-                })?;
+        let script = self.config.scripts.get_mut(alias).context(AliasNotFound {
+            alias: &alias.to_string(),
+        })?;
 
         script.command = open_editor(Some(&script.command))?;
 
@@ -140,18 +135,37 @@ impl Pier {
         Ok(script)
     }
 
-    /// Removes a script that matches the alias
-    pub fn remove_script(&mut self, alias: &str) -> PierResult<()> {
-        ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
+    /// Interactively edit a script by selecting from a list
+    // pub fn edit_script_interactive(&mut self) -> PierResult<()> {
+    //     use dialoguer::{theme::ColorfulTheme, Select};
 
-        self.config
-            .scripts
-            .remove(alias)
-            .context(AliasNotFound {
+    //     ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
+
+    //     let aliases: Vec<&String> = self.config.scripts.0.keys().collect();
+
+    //     let selection = Select::with_theme(&ColorfulTheme::default())
+    //         .with_prompt("Select a script to edit")
+    //         .items(&aliases)
+    //         .default(0)
+    //         .interact()
+    //         .context(DialoguerError)?;
+
+    //     let alias = aliases[selection];
+
+    //     self.edit_script(alias)?;
+
+    //     Ok(())
+    // }
+    /// Removes a script that matches the alias
+    pub fn remove_script(&mut self, aliases: &Vec<String>) -> PierResult<()> {
+        ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
+        for alias in aliases {
+            self.config.scripts.remove(alias).context(AliasNotFound {
                 alias: &alias.to_string(),
             })?;
 
-        println!("Removed {}", &alias);
+            println!("Removed {}", &alias);
+        }
 
         Ok(())
     }
@@ -230,7 +244,12 @@ impl Pier {
     }
 
     /// Move a script that matches the alias to another alias
-    pub fn move_script(&mut self, from_alias: &str, new_alias: &str, force: bool) -> PierResult<()> {
+    pub fn move_script(
+        &mut self,
+        from_alias: &str,
+        new_alias: &str,
+        force: bool,
+    ) -> PierResult<()> {
         if !force {
             ensure!(
                 !&self.config.scripts.contains_key(new_alias),
@@ -292,10 +311,8 @@ impl Pier {
 
             match (&tags, &script.tags) {
                 (Some(list_tags), Some(script_tags)) => {
-
                     for tag in list_tags {
                         if script_tags.contains(tag) {
-
                             if shbang {
                                 table.add_row(row![
                                     FY -> &alias,
@@ -359,7 +376,7 @@ impl Pier {
         }
 
         // forced color explicitly. works in pipes
-        table.print_tty(true);
+        let _ = table.print_tty(true);
 
         Ok(())
     }
@@ -412,3 +429,12 @@ pub fn open_editor(content: Option<&str>) -> PierResult<String> {
 
     Ok(edited_text)
 }
+// pub fn open_editor_full(content: &str) -> PierResult<String> {
+//     // open the full file in editor to edit
+//     let edited_text = scrawl::editor::new()
+//         .contents(content)
+//         .open()
+//         .context(EditorError)?;
+
+//     Ok(edited_text)
+// }

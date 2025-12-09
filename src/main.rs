@@ -39,22 +39,35 @@ fn handle_subcommands(cli: Cli) -> PierResult<Option<process::ExitStatus>> {
                 force,
             } => {
                 let mut pier = Pier::from(cli.opts.path, cli.opts.verbose)?;
-                pier.add_script(Script {
-                    alias,
-                    description,
-                    command: match command {
-                        Some(cmd) => cmd,
-                        None => open_editor(None)?,
+                pier.add_script(
+                    Script {
+                        alias,
+                        description,
+                        command: match command {
+                            Some(cmd) => cmd,
+                            None => open_editor(None)?,
+                        },
+                        tags,
+                        reference: None,
                     },
-                    tags,
-                    reference: None,
-                }, force)?;
+                    force,
+                )?;
                 pier.write()?;
             }
 
             CliSubcommand::Edit { alias } => {
                 let mut pier = Pier::from(cli.opts.path, cli.opts.verbose)?;
-                pier.edit_script(&alias)?;
+
+                match alias {
+                    None => {
+                        //pier.edit_script_interactive()?;
+                        return Err("interactive edit not implemented".into());
+                    }
+                    Some(ref a) => {
+                        pier.edit_script(&a)?;
+                    }
+                }
+
                 pier.write()?;
             }
             CliSubcommand::Remove { alias } => {
