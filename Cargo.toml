@@ -35,3 +35,6 @@ serde = { version = '1.0.83', features = ['derive'] }
 [[test]]
 name = "integration"
 path = "tests/tests.rs"
+
+[profile.release]
+lto = true

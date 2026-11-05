@@ -1,4 +1,4 @@
-# **pier** ~ A Linux script management tool
+# **pier** ~ A CLI to organize and run short Unix shell scripts
 [![Build Status](https://github.com/pier-cli/pier/actions/workflows/ci.yml/badge.svg)](https://github.com/pier-cli/pier/actions/workflows/ci.yml)
 ![crates.io](https://img.shields.io/crates/v/pier.svg)
 
