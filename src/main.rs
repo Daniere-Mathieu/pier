@@ -1,5 +1,5 @@
+use clap::{CommandFactory, Parser};
 use std::process;
-use structopt::StructOpt;
 
 use pier::{
     cli::{Cli, CliSubcommand},
@@ -9,7 +9,7 @@ use pier::{
 };
 
 fn main() {
-    let opt = Cli::from_args();
+    let opt = Cli::parse();
 
     match handle_subcommands(opt) {
         Ok(status) => {
@@ -60,11 +60,10 @@ fn handle_subcommands(cli: Cli) -> PierResult<Option<process::ExitStatus>> {
 
                 match alias {
                     None => {
-                        //pier.edit_script_interactive()?;
-                        return Err("interactive edit not implemented".into());
+                        unimplemented!("interactive edit not implemented");
                     }
                     Some(ref a) => {
-                        pier.edit_script(&a)?;
+                        pier.edit_script(a)?;
                     }
                 }
 
@@ -79,6 +78,9 @@ fn handle_subcommands(cli: Cli) -> PierResult<Option<process::ExitStatus>> {
                 let mut pier = Pier::new();
                 pier.config_init(cli.opts.path)?;
             }
+            CliSubcommand::Completions { shell } => {
+                clap_complete::generate(shell, &mut Cli::command(), "pier", &mut std::io::stdout());
+            }
             CliSubcommand::Show { alias } => {
                 let pier = Pier::from(cli.opts.path, cli.opts.verbose)?;
                 let script = pier.fetch_script(&alias)?;
@@ -89,17 +91,18 @@ fn handle_subcommands(cli: Cli) -> PierResult<Option<process::ExitStatus>> {
                 tags,
                 cmd_full,
                 cmd_width,
+                namespace,
             } => {
                 let pier = Pier::from(cli.opts.path, cli.opts.verbose)?;
                 if list_aliases {
-                    pier.list_aliases(tags)?
+                    pier.list_aliases(tags, namespace)?
                 } else {
-                    pier.list_scripts(tags, cmd_full, cmd_width)?
+                    pier.list_scripts(tags, cmd_full, cmd_width, namespace)?
                 }
             }
             CliSubcommand::Run { alias, args } => {
                 let pier = Pier::from(cli.opts.path, cli.opts.verbose)?;
-                let exit_code = pier.run_script(&alias, args)?;
+                let exit_code = pier.run_script(&alias, args, cli.opts.dry_run)?;
                 return Ok(Some(exit_code));
             }
             CliSubcommand::Copy {
@@ -119,11 +122,21 @@ fn handle_subcommands(cli: Cli) -> PierResult<Option<process::ExitStatus>> {
                 pier.move_script(&from_alias, &to_alias, force)?;
                 pier.write()?;
             }
+            CliSubcommand::Export { alias, tag } => {
+                let pier = Pier::from(cli.opts.path, cli.opts.verbose)?;
+                let exported = pier.export_scripts(alias, tag)?;
+                print!("{}", exported);
+            }
+            CliSubcommand::Import { path, force } => {
+                let mut pier = Pier::from(cli.opts.path, cli.opts.verbose)?;
+                pier.import_scripts(&path, force)?;
+                pier.write()?;
+            }
         };
     } else {
         let alias = &cli.alias.expect("Alias is required unless subcommand.");
         let pier = Pier::from(cli.opts.path, cli.opts.verbose)?;
-        let exit_code = pier.run_script(alias, cli.args)?;
+        let exit_code = pier.run_script(alias, cli.args, cli.opts.dry_run)?;
         return Ok(Some(exit_code));
     }
 

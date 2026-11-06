@@ -1,7 +1,7 @@
+use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
-use structopt::{clap::AppSettings, StructOpt};
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum CliSubcommand {
     /// Add a new script to config.
     Add {
@@ -10,29 +10,29 @@ pub enum CliSubcommand {
         command: Option<String>,
 
         /// The alias or name for the script.
-        #[structopt(short = "a", long = "alias")]
+        #[arg(short = 'a', long = "alias")]
         alias: String,
 
         /// The description for the script.
-        #[structopt(short = "d", long = "--description")]
+        #[arg(short = 'd', long = "description")]
         description: Option<String>,
 
         /// Set which tags the script belongs to.
-        #[structopt(short = "t", long = "tag")]
+        #[arg(short = 't', long = "tag")]
         tags: Option<Vec<String>>,
 
         /// Allows to overwrite the existing script
-        #[structopt(short = "f", long = "force")]
+        #[arg(short = 'f', long = "force")]
         force: bool,
     },
     /// alias: rm - Remove a script matching alias.
-    #[structopt(alias = "rm")]
+    #[command(alias = "rm")]
     Remove {
         /// The alias or name for the script.
         alias: Vec<String>,
     },
     /// alias: init - Add a config file.
-    #[structopt(alias = "init")]
+    #[command(alias = "init")]
     ConfigInit,
     /// Edit a script matching alias.
     Edit {
@@ -45,10 +45,12 @@ pub enum CliSubcommand {
         alias: String,
     },
     /// Run a script matching alias.
+    #[command(trailing_var_arg = true)]
     Run {
         /// The alias or name for the script.
         alias: String,
         /// The positional arguments to send to script.
+        #[arg(allow_hyphen_values = true)]
         args: Vec<String>,
     },
     /// alias: ls - List scripts
@@ -62,50 +64,82 @@ pub enum CliSubcommand {
     /// 3. Command display with (cli option)
     ///
     /// 4. Command display with (config option)
-    #[structopt(alias = "ls")]
+    #[command(alias = "ls")]
     List {
         /// Only displays aliases of the scripts.
-        #[structopt(short = "q", long = "list_aliases")]
+        #[arg(short = 'q', long = "list_aliases")]
         list_aliases: bool,
 
         /// Display the full command.
-        #[structopt(short = "l", long = "cmd_full")]
+        #[arg(short = 'l', long = "cmd_full")]
         cmd_full: bool,
 
         /// The max number of characters to display from the command.
-        #[structopt(short = "c", long = "cmd_width")]
+        #[arg(short = 'c', long = "cmd_width")]
         cmd_width: Option<usize>,
 
         /// Filter based on tags.
-        #[structopt(short = "t", long = "tag")]
+        #[arg(short = 't', long = "tag")]
         tags: Option<Vec<String>>,
+
+        /// Filter by namespace (prefix before ':' in alias).
+        #[arg(short = 'n', long = "namespace")]
+        namespace: Option<String>,
     },
     /// alias: cp - Copy existing alias to the new one
-    #[structopt(alias = "cp")]
+    #[command(alias = "cp")]
     Copy {
         /// The alias of the script that will be copied.
         from_alias: String,
         /// The new alias of the copy of the script.
         to_alias: String,
     },
+    /// Generate shell completions for the given shell.
+    Completions {
+        /// The shell to generate completions for.
+        shell: clap_complete::Shell,
+    },
     /// alias: mv, rename - Move/rename existing alias to the new one
-    #[structopt(aliases = &["mv", "rename"])]
+    #[command(aliases = ["mv", "rename"])]
     Move {
         /// The alias of the script that will be moved.
         from_alias: String,
         /// The new alias of the script.
         to_alias: String,
         /// Allows to overwrite the existing script
-        #[structopt(short = "f", long = "force")]
+        #[arg(short = 'f', long = "force")]
+        force: bool,
+    },
+    /// Export scripts from the config.
+    Export {
+        /// Export only the script with this alias.
+        #[arg(short = 'a', long = "alias")]
+        alias: Option<String>,
+
+        /// Export only scripts with this tag.
+        #[arg(short = 't', long = "tag")]
+        tag: Option<String>,
+    },
+    /// Import scripts from a file.
+    Import {
+        /// Path to the TOML file to import from.
+        path: std::path::PathBuf,
+
+        /// Overwrite existing scripts on conflict.
+        #[arg(short = 'f', long = "force")]
         force: bool,
     },
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Args, Debug)]
 pub struct CliOpts {
     /// The level of verbosity
-    #[structopt(short = "v", long = "verbose")]
+    #[arg(short = 'v', long = "verbose")]
     pub verbose: bool,
+
+    /// Preview the command without executing it
+    #[arg(long = "dry-run", global = true)]
+    pub dry_run: bool,
 
     /// Sets a custom config file.
     ///
@@ -125,25 +159,26 @@ pub struct CliOpts {
     ///
     ///   - $HOME/.pier
     ///
-    #[structopt(short = "c", long = "config-file", env = "PIER_CONFIG_PATH")]
+    #[arg(short = 'c', long = "config-file", env = "PIER_CONFIG_PATH")]
     pub path: Option<PathBuf>,
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::SubcommandsNegateReqs, setting = AppSettings::TrailingVarArg, author)]
+#[derive(Debug, Parser)]
+#[command(subcommand_negates_reqs = true, trailing_var_arg = true, author)]
 /// A simple script management CLI
 pub struct Cli {
-    #[structopt(flatten)]
+    #[command(flatten)]
     pub opts: CliOpts,
 
     /// The alias or name for the script.
-    #[structopt(required_unless = "cmd")]
+    #[arg(required = true)]
     pub alias: Option<String>,
 
     /// The positional arguments to send to script.
+    #[arg(allow_hyphen_values = true)]
     pub args: Vec<String>,
 
     /// Pier subcommands
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     pub cmd: Option<CliSubcommand>,
 }
