@@ -1,8 +1,11 @@
 # **pier** ~ A CLI to organize and run short Unix shell scripts
-[![Build Status](https://github.com/pier-cli/pier/actions/workflows/ci.yml/badge.svg)](https://github.com/pier-cli/pier/actions/workflows/ci.yml)
+[![Build Status](https://github.com/Daniere-Mathieu/pier/actions/workflows/ci.yml/badge.svg)](https://github.com/Daniere-Mathieu/pier/actions/workflows/ci.yml)
+[![Security](https://github.com/Daniere-Mathieu/pier/actions/workflows/security.yml/badge.svg)](https://github.com/Daniere-Mathieu/pier/actions/workflows/security.yml)
 ![crates.io](https://img.shields.io/crates/v/pier.svg)
 
 A central repository to manage all your one-liners, scripts, tools, and CLIs. Add, remove, list, and run scripts - storing metadata to easily find them later. No more digging through your `bin` folder...
+
+> **Note:** This is a fork of [pier-cli/pier](https://github.com/pier-cli/pier). It adds new features (shell completions, import/export, dry-run, namespaces, argument pass-through) and modernizes the codebase to Rust 2021 / stable with up-to-date dependencies. These additions are **not battle-tested yet** — use at your own risk and feel free to report issues.
 
 ![Boat pier](https://raw.githubusercontent.com/BenSchZA/pier/master/.media/boat-dock.png)
 
@@ -16,86 +19,53 @@ The idea behind `pier` is to create a central repository for all your scripts, a
 
 ## Installation
 
-From **Crates.io**: `cargo install pier`
-
-From **GitHub release**: simply download the release binary
-
-Using **Nix** package manager:
-1. From GitHub release: `make install` or `nix-env -if derivation.nix`
-2. From source: update `src` in derivation to `./.`
-
-
-## Recent Breaking Changes
-
-#### Version `0.1.4`:
-The configuration variable `default_interpreter` has been _**removed**_:
-```toml
-default_interpreter = ["foorunner", "-c"]
+**One-line install** (Linux / macOS):
+```sh
+curl -fsSL https://raw.githubusercontent.com/Daniere-Mathieu/pier/master/install.sh | sh
 ```
-So when upgrading from to `0.1.4` from an earlier version you will need to instead specify the variable in this format:
-```toml
-[default]
-interpreter = ["foorunner", "-c"]
+
+This downloads the latest release binary and installs it to `~/.local/bin`. Set `PIER_INSTALL_DIR` to change the location:
+```sh
+curl -fsSL https://raw.githubusercontent.com/Daniere-Mathieu/pier/master/install.sh | PIER_INSTALL_DIR=/usr/local/bin sh
 ```
+
+**From source** with Cargo:
+```sh
+cargo install --git https://github.com/Daniere-Mathieu/pier.git
+```
+
+**From Crates.io**: `cargo install pier`
+
 
 ## Operation
 
 Use `pier --help` to display help on commandline or see `src/cli.rs` for a more detailed spec.
 ```
-pier 0.1.4
-Benjamin Scholtz, Isak Johansson
 A simple script management CLI
 
-USAGE:
-    pier [FLAGS] [OPTIONS] <alias>
-    pier [FLAGS] [OPTIONS] <SUBCOMMAND>
+Usage: pier [OPTIONS] <ALIAS> [ARGS]...
+       pier [OPTIONS] [ALIAS] [ARGS]... <COMMAND>
 
-FLAGS:
-    -h, --help       
-            Prints help information
+Commands:
+  add          Add a new script to config
+  remove       alias: rm - Remove a script matching alias
+  config-init  alias: init - Add a config file
+  edit         Edit a script matching alias
+  show         Show a script matching alias
+  run          Run a script matching alias
+  list         alias: ls - List scripts
+  copy         alias: cp - Copy existing alias to the new one
+  completions  Generate shell completions for the given shell
+  move         alias: mv, rename - Move/rename existing alias to the new one
+  export       Export scripts from the config
+  import       Import scripts from a file
+  help         Print this message or the help of the given subcommand(s)
 
-    -V, --version    
-            Prints version information
-
-    -v, --verbose    
-            The level of verbosity
-
-
-OPTIONS:
-    -c, --config-file <path>    
-            Sets a custom config file.
-            
-            DEFAULT PATH is otherwise determined in this order:
-            
-            - $PIER_CONFIG_PATH (environment variable if set)
-            
-            - pier.toml (in the current directory)
-            
-            - $XDG_CONFIG_HOME/pier/config.toml
-            
-            - $XDG_CONFIG_HOME/pier/config
-            
-            - $XDG_CONFIG_HOME/pier.toml
-            
-            - $HOME/.pier.toml
-            
-            - $HOME/.pier
-            
-             [env: PIER_CONFIG_PATH=]
-
-ARGS:
-    <alias>    
-            The alias or name for the script.
-
-
-SUBCOMMANDS:
-    add       Add a new script to config.
-    edit      Edit a script matching alias.
-    help      Prints this message or the help of the given subcommand(s)
-    list      alias: ls - List scripts
-    remove    alias: rm - Remove a script matching alias.
-    run       Run a script matching alias.
-    show      Show a script matching alias.
+Options:
+  -v, --verbose              The level of verbosity
+      --dry-run              Preview the command without executing it
+  -c, --config-file <PATH>   Sets a custom config file [env: PIER_CONFIG_PATH=]
+  -h, --help                 Print help
 ```
 
 * `pier list`
@@ -216,15 +186,19 @@ nohup st > /dev/null 2>&1&
 
 ## Origin
 
-Originally intended as a way to manage Docker one-liners, the name `pier` continues along the same maritime theme. I realized Pier can manage a lot more than just Docker scripts.
+Originally created by [BenSchZA](https://github.com/BenSchZA) and intended as a way to manage Docker one-liners, the name `pier` continues along the same maritime theme. This fork picks up where the original left off, with updated tooling and new features.
 
-## Roadmap to v1.0.0
+## Shell Completions
 
-* Fuzzy search + autocomplete e.g. prompts for alias
-* Complete base features: mv, tag
-* Rework testing
-* Update documentation e.g. contributor guidelines, templates
+Generate completions for your shell and source them:
 
-## Star History
+```sh
+# Bash
+pier completions bash > ~/.local/share/bash-completion/completions/pier
 
-[![Star History Chart](https://api.star-history.com/svg?repos=pier-cli/pier&type=Date)](https://star-history.com/#pier-cli/pier&Date)
+# Zsh
+pier completions zsh > ~/.zfunc/_pier
+
+# Fish
+pier completions fish > ~/.config/fish/completions/pier.fish
+```
