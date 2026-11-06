@@ -1,6 +1,7 @@
 use prettytable::{row, Table};
 use snafu::{ensure, OptionExt, ResultExt};
 use std::fs;
+use std::sync::LazyLock;
 use std::{path::PathBuf, process::ExitStatus};
 pub mod cli;
 mod config;
@@ -11,10 +12,8 @@ mod macros;
 use defaults::*;
 pub mod script;
 use error::*;
-use scrawl;
 use script::Script;
 
-// Creates a Result type that return PierError by default
 pub type PierResult<T, E = PierError> = ::std::result::Result<T, E>;
 
 /// Main library interface
@@ -25,26 +24,23 @@ pub struct Pier {
     verbose: bool,
 }
 
-#[macro_use]
-extern crate lazy_static;
-
 use prettytable::format::FormatBuilder;
 use prettytable::format::LinePosition;
 use prettytable::format::LineSeparator;
 use prettytable::format::TableFormat;
 
-lazy_static! {
-    static ref COOL_SEP: LineSeparator =
-        LineSeparator::new('\u{2256}', '\u{2256}', '\u{2256}', '\u{2256}');
-    pub static ref COOL_FORMAT: TableFormat = FormatBuilder::new()
+static COOL_SEP: LazyLock<LineSeparator> =
+    LazyLock::new(|| LineSeparator::new('\u{2256}', '\u{2256}', '\u{2256}', '\u{2256}'));
+pub static COOL_FORMAT: LazyLock<TableFormat> = LazyLock::new(|| {
+    FormatBuilder::new()
         .column_separator('\u{22EE}')
         .borders('\u{22EE}')
         .separator(LinePosition::Title, *COOL_SEP)
         .separator(LinePosition::Bottom, *COOL_SEP)
         .separator(LinePosition::Top, *COOL_SEP)
         .padding(1, 1)
-        .build();
-}
+        .build()
+});
 
 impl Pier {
     /// Wrapper to write the configuration to path.
@@ -58,9 +54,12 @@ impl Pier {
         self.path = new_path
             .unwrap_or(fallback_path().unwrap_or(xdg_config_home!("pier/config.toml").unwrap()));
 
-        ensure!(!self.path.exists(), ConfigInitFileAlreadyExists {
-            path: &self.path.as_path()
-        });
+        ensure!(
+            !self.path.exists(),
+            ConfigInitFileAlreadyExists {
+                path: &self.path.as_path()
+            }
+        );
 
         if let Some(parent_dir) = &self.path.parent() {
             if !parent_dir.exists() {
@@ -130,32 +129,11 @@ impl Pier {
 
         script.command = open_editor(Some(&script.command))?;
 
-        println!("Edited {}", &alias);
+        println!("Edited {}", alias);
 
         Ok(script)
     }
 
-    /// Interactively edit a script by selecting from a list
-    // pub fn edit_script_interactive(&mut self) -> PierResult<()> {
-    //     use dialoguer::{theme::ColorfulTheme, Select};
-
-    //     ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
-
-    //     let aliases: Vec<&String> = self.config.scripts.0.keys().collect();
-
-    //     let selection = Select::with_theme(&ColorfulTheme::default())
-    //         .with_prompt("Select a script to edit")
-    //         .items(&aliases)
-    //         .default(0)
-    //         .interact()
-    //         .context(DialoguerError)?;
-
-    //     let alias = aliases[selection];
-
-    //     self.edit_script(alias)?;
-
-    //     Ok(())
-    // }
     /// Removes a script that matches the alias
     pub fn remove_script(&mut self, aliases: &Vec<String>) -> PierResult<()> {
         ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
@@ -164,7 +142,7 @@ impl Pier {
                 alias: &alias.to_string(),
             })?;
 
-            println!("Removed {}", &alias);
+            println!("Removed {}", alias);
         }
 
         Ok(())
@@ -181,31 +159,41 @@ impl Pier {
             );
         }
 
-        println!("Added {}", &script.alias);
+        println!("Added {}", script.alias);
 
         self.config.scripts.insert(script.alias.to_string(), script);
 
         Ok(())
     }
 
-    /// Prints only the aliases in current config file that matches tags.
-    pub fn list_aliases(&self, tags: Option<Vec<String>>) -> PierResult<()> {
+    /// Prints only the aliases in current config file that matches tags and namespace.
+    pub fn list_aliases(
+        &self,
+        tags: Option<Vec<String>>,
+        namespace: Option<String>,
+    ) -> PierResult<()> {
         ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
 
+        let ns_prefix = namespace.map(|n| format!("{}:", n));
+
         for (alias, script) in self.config.scripts.iter() {
+            if let Some(ref prefix) = ns_prefix {
+                if !alias.starts_with(prefix) {
+                    continue;
+                }
+            }
+
             match (&tags, &script.tags) {
                 (Some(list_tags), Some(script_tags)) => {
                     for tag in list_tags {
                         if script_tags.contains(tag) {
                             println!("{}", alias);
-
                             continue;
                         }
                     }
                 }
                 (None, _) => {
                     println!("{}", alias);
-
                     continue;
                 }
                 _ => (),
@@ -222,7 +210,6 @@ impl Pier {
             AliasAlreadyExists { alias: new_alias }
         );
 
-        // TODO: refactor the line below.
         let script = self
             .config
             .scripts
@@ -232,11 +219,7 @@ impl Pier {
             })?
             .clone();
 
-        println!(
-            "Copy from alias {} to new alias {}",
-            &from_alias.to_string(),
-            &new_alias.to_string()
-        );
+        println!("Copy from alias {} to new alias {}", from_alias, new_alias);
 
         self.config.scripts.insert(new_alias.to_string(), script);
 
@@ -266,11 +249,7 @@ impl Pier {
             })?
             .clone();
 
-        println!(
-            "Move from alias {} to new alias {}",
-            &from_alias.to_string(),
-            &new_alias.to_string()
-        );
+        println!("Move from alias {} to new alias {}", from_alias, new_alias);
 
         self.config.scripts.insert(new_alias.to_string(), script);
 
@@ -283,6 +262,7 @@ impl Pier {
         tags: Option<Vec<String>>,
         cmd_full: bool,
         cmd_width: Option<usize>,
+        namespace: Option<String>,
     ) -> PierResult<()> {
         let width = match (cmd_width, self.config.default.command_width) {
             (Some(width), _) => width,
@@ -291,10 +271,11 @@ impl Pier {
         };
         ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
 
+        let ns_prefix = namespace.map(|n| format!("{}:", n));
+
         let mut table = Table::new();
 
         table.set_format(*COOL_FORMAT);
-        // cyan titles
         table.set_titles(row![
             Fc -> "Alias",
             Fc -> "Tags",
@@ -303,6 +284,12 @@ impl Pier {
         ]);
 
         for (alias, script) in self.config.scripts.iter() {
+            if let Some(ref prefix) = ns_prefix {
+                if !alias.starts_with(prefix) {
+                    continue;
+                }
+            }
+
             let shbang = script.command.starts_with("#!");
             let descp = match &script.description.as_ref() {
                 Some(d) => d,
@@ -375,19 +362,40 @@ impl Pier {
             };
         }
 
-        // forced color explicitly. works in pipes
         let _ = table.print_tty(true);
 
         Ok(())
     }
 
     /// Runs a script and print stdout and stderr of the command.
-    pub fn run_script(&self, alias: &str, args: Vec<String>) -> PierResult<ExitStatus> {
+    pub fn run_script(
+        &self,
+        alias: &str,
+        args: Vec<String>,
+        dry_run: bool,
+    ) -> PierResult<ExitStatus> {
         let script = self.fetch_script(alias)?;
         let interpreter = match self.config.default.interpreter {
             Some(ref interpreter) => interpreter.clone(),
             None => fallback_shell(),
         };
+
+        if dry_run {
+            println!("Alias:       {}", alias);
+            if script.has_shebang() {
+                println!("Mode:        shebang");
+            } else {
+                println!("Mode:        interpreter");
+                println!("Interpreter: {}", interpreter.join(" "));
+            }
+            println!("Command:     {}", script.command);
+            if args.is_empty() {
+                println!("Args:        (none)");
+            } else {
+                println!("Args:        {}", args.join(", "));
+            }
+            return Ok(std::process::ExitStatus::default());
+        }
 
         if self.verbose {
             println!("Starting script \"{}\"", alias);
@@ -402,10 +410,10 @@ impl Pier {
         let stdout = String::from_utf8_lossy(&cmd.stdout);
         let stderr = String::from_utf8_lossy(&cmd.stderr);
 
-        if stdout.len() > 0 {
+        if !stdout.is_empty() {
             println!("{}", stdout);
         };
-        if stderr.len() > 0 {
+        if !stderr.is_empty() {
             eprintln!("{}", stderr);
         };
 
@@ -416,25 +424,66 @@ impl Pier {
 
         Ok(cmd.status)
     }
+
+    /// Export scripts as a TOML config string, optionally filtered by alias or tag.
+    pub fn export_scripts(&self, alias: Option<String>, tag: Option<String>) -> PierResult<String> {
+        ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
+
+        let mut export_config = Config::default();
+
+        match alias {
+            Some(ref a) => {
+                let script = self.config.scripts.get(a).context(AliasNotFound {
+                    alias: a.to_string(),
+                })?;
+                export_config.scripts.insert(a.clone(), script.clone());
+            }
+            None => {
+                for (key, script) in self.config.scripts.iter() {
+                    let include = match (&tag, &script.tags) {
+                        (Some(filter_tag), Some(script_tags)) => script_tags.contains(filter_tag),
+                        (Some(_), None) => false,
+                        (None, _) => true,
+                    };
+                    if include {
+                        export_config.scripts.insert(key.clone(), script.clone());
+                    }
+                }
+            }
+        }
+
+        let config_string = toml::to_string_pretty(&export_config).context(TomlSerialize)?;
+        Ok(config_string)
+    }
+
+    /// Import scripts from a TOML config file.
+    pub fn import_scripts(&mut self, path: &std::path::Path, force: bool) -> PierResult<()> {
+        let import_config = Config::from(&path.to_path_buf())?;
+
+        for (key, script) in import_config.scripts.iter() {
+            if !force {
+                ensure!(
+                    !self.config.scripts.contains_key(key),
+                    AliasAlreadyExists { alias: key }
+                );
+            }
+            self.config.scripts.insert(key.clone(), script.clone());
+        }
+
+        Ok(())
+    }
 }
 
 pub fn open_editor(content: Option<&str>) -> PierResult<String> {
-    let edited_text = scrawl::editor::new()
-        .contents(match content {
-            Some(txt) => txt,
-            None => "",
-        })
-        .open()
-        .context(EditorError)?;
+    let reader = match content {
+        Some(txt) => scrawl::with(&txt),
+        None => scrawl::new(),
+    }
+    .map_err(|e| PierError::EditorError {
+        message: e.to_string(),
+    })?;
 
-    Ok(edited_text)
+    reader.to_string().map_err(|e| PierError::EditorError {
+        message: e.to_string(),
+    })
 }
-// pub fn open_editor_full(content: &str) -> PierResult<String> {
-//     // open the full file in editor to edit
-//     let edited_text = scrawl::editor::new()
-//         .contents(content)
-//         .open()
-//         .context(EditorError)?;
-
-//     Ok(edited_text)
-// }
