@@ -10,27 +10,27 @@ repository = "https://github.com/BenSchZA/pier.git"
 keywords = ["cli", "productivity", "tool", "devops", "management"]
 categories = ["command-line-utilities"]
 
-edition = "2018"
+edition = "2021"
 
 autotests = false
 
 [dependencies]
-toml = "0.4"
-serde = { version = '1.0.83', features = ['derive'] }
-prettytable-rs = "^0.10"
-enum-kinds = "0.4.1"
-dirs = "2.0.2"
-snafu = "0.5.0"
-scrawl = "1.1.0"
-structopt = "0.3"
-tempfile = "3.1.0"
-lazy_static = "1.4.0"
+toml = "0.8"
+serde = { version = "1", features = ["derive"] }
+prettytable-rs = "0.10"
+enum-kinds = "0.5"
+dirs = "6"
+snafu = "0.8"
+scrawl = "2"
+clap = { version = "4", features = ["derive", "env"] }
+clap_complete = "4"
+tempfile = "3"
 
 [dev-dependencies]
-assert_cmd = "0.11.1"
-predicates = "1.0"
-assert_fs = "0.11"
-serde = { version = '1.0.83', features = ['derive'] }
+assert_cmd = "2"
+predicates = "3"
+assert_fs = "1"
+serde = { version = "1", features = ["derive"] }
 
 [[test]]
 name = "integration"
