@@ -693,3 +693,75 @@ pier_test!(cli => test_namespace_and_tag_combined, cfg => CONFIG_NS,
         .stdout(contains("dev:stop").not())
         .stdout(contains("prod:deploy").not());
 });
+
+// === Tag management tests ===
+
+const CONFIG_TAGS: &str = r#"
+[scripts.tagged]
+command = 'echo tagged'
+tags = ['info', 'echo']
+
+[scripts.untagged]
+command = 'echo untagged'
+"#;
+
+pier_test!(cli => test_tag_list, cfg => CONFIG_TAGS,
+| _cfg: ChildPath, mut cmd: Command | {
+    cmd.args(["tag", "list"]);
+    cmd.assert()
+        .success()
+        .stdout(contains("echo"))
+        .stdout(contains("info"));
+});
+
+pier_test!(cli => test_tag_add, cfg => CONFIG_TAGS,
+| cfg: ChildPath, mut cmd: Command | {
+    cmd.args(["tag", "add", "untagged", "new_tag", "another"]);
+    cmd.assert().success();
+
+    cfg.assert(contains("new_tag"));
+    cfg.assert(contains("another"));
+});
+
+pier_test!(cli => test_tag_add_no_duplicates, cfg => CONFIG_TAGS,
+| cfg: ChildPath, mut cmd: Command | {
+    cmd.args(["tag", "add", "tagged", "info", "new_tag"]);
+    cmd.assert().success();
+
+    let content = std::fs::read_to_string(cfg.path()).unwrap();
+    assert_eq!(content.matches("info").count(), 1, "info should not be duplicated");
+    assert!(content.contains("new_tag"));
+});
+
+pier_test!(cli => test_tag_remove, cfg => r#"
+[scripts.tagged]
+command = 'echo tagged'
+tags = ['info', 'removeme']
+"#,
+| cfg: ChildPath, mut cmd: Command | {
+    cmd.args(["tag", "rm", "tagged", "removeme"]);
+    cmd.assert().success();
+
+    let content = std::fs::read_to_string(cfg.path()).unwrap();
+    assert!(content.contains("info"), "remaining tag should stay");
+    assert!(!content.contains("removeme"), "removed tag should be gone");
+});
+
+pier_test!(cli => test_tag_remove_all_clears_field, cfg => r#"
+[scripts.one_tag]
+command = 'echo one'
+tags = ['only']
+"#,
+| cfg: ChildPath, mut cmd: Command | {
+    cmd.args(["tag", "rm", "one_tag", "only"]);
+    cmd.assert().success();
+
+    let content = std::fs::read_to_string(cfg.path()).unwrap();
+    assert!(!content.contains("tags"), "tags field should be removed when empty");
+});
+
+pier_test!(cli => test_tag_add_nonexistent_alias, cfg => CONFIG_TAGS,
+| _cfg: ChildPath, mut cmd: Command | {
+    cmd.args(["tag", "add", "nonexistent", "foo"]);
+    cmd.assert().failure();
+});
