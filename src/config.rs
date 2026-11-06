@@ -87,6 +87,14 @@ impl Scripts {
     pub fn iter(&self) -> Iter<'_, String, Script> {
         self.0.iter()
     }
+
+    pub fn keys(&self) -> std::collections::btree_map::Keys<'_, String, Script> {
+        self.0.keys()
+    }
+
+    pub fn values(&self) -> std::collections::btree_map::Values<'_, String, Script> {
+        self.0.values()
+    }
 }
 
 struct ScriptsVisitor {

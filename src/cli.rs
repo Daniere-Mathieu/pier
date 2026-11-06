@@ -2,6 +2,28 @@ use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Debug, Subcommand)]
+pub enum TagAction {
+    /// Add tags to an existing script.
+    Add {
+        /// The alias of the script.
+        alias: String,
+        /// Tags to add.
+        tags: Vec<String>,
+    },
+    /// Remove tags from an existing script.
+    #[command(alias = "rm")]
+    Remove {
+        /// The alias of the script.
+        alias: String,
+        /// Tags to remove.
+        tags: Vec<String>,
+    },
+    /// List all unique tags.
+    #[command(alias = "ls")]
+    List,
+}
+
+#[derive(Debug, Subcommand)]
 pub enum CliSubcommand {
     /// Add a new script to config.
     Add {
@@ -39,16 +61,16 @@ pub enum CliSubcommand {
         /// The alias or name for the script.
         alias: Option<String>,
     },
-    /// Show a script matching alias.
+    /// Show a script matching alias. Opens a fuzzy picker if no alias given.
     Show {
         /// The alias or name for the script.
-        alias: String,
+        alias: Option<String>,
     },
-    /// Run a script matching alias.
+    /// Run a script matching alias. Opens a fuzzy picker if no alias given.
     #[command(trailing_var_arg = true)]
     Run {
         /// The alias or name for the script.
-        alias: String,
+        alias: Option<String>,
         /// The positional arguments to send to script.
         #[arg(allow_hyphen_values = true)]
         args: Vec<String>,
@@ -129,6 +151,11 @@ pub enum CliSubcommand {
         #[arg(short = 'f', long = "force")]
         force: bool,
     },
+    /// Manage script tags.
+    Tag {
+        #[command(subcommand)]
+        action: TagAction,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -170,8 +197,7 @@ pub struct Cli {
     #[command(flatten)]
     pub opts: CliOpts,
 
-    /// The alias or name for the script.
-    #[arg(required = true)]
+    /// The alias or name for the script. Opens a fuzzy picker if omitted.
     pub alias: Option<String>,
 
     /// The positional arguments to send to script.
