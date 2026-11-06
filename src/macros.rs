@@ -28,7 +28,6 @@ macro_rules! home {
     };
 }
 
-///
 #[macro_export]
 macro_rules! clap_arg {
     ($relative_path:expr) => {

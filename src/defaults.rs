@@ -1,8 +1,7 @@
 use super::{home, pier_err, xdg_config_home, PierError, PierResult};
-use dirs;
 use std::{env, path::PathBuf};
 pub const FALLBACK_COMMAND_DISPLAY_WIDTH: usize = 80;
-pub const FALLBACK_SHELL: &'static str = "/bin/sh";
+pub const FALLBACK_SHELL: &str = "/bin/sh";
 
 pub fn fallback_shell() -> Vec<String> {
     match env::var("SHELL") {
@@ -18,16 +17,12 @@ pub fn fallback_path() -> PierResult<PathBuf> {
         xdg_config_home!("pier/config"),
         xdg_config_home!("pier.toml"),
         home!(".pier.toml"),
-        home!(".pier"), // Kept the .pier path for backwards compatibility
+        home!(".pier"),
     ];
 
-    // Loops for a vector of possible paths and tries to generate config from the first
-    // default path that exists.
-    for config_path in default_config_paths {
-        if let Some(path) = config_path {
-            if path.exists() {
-                return Ok(path);
-            }
+    for path in default_config_paths.into_iter().flatten() {
+        if path.exists() {
+            return Ok(path);
         }
     }
 

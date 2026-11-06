@@ -28,24 +28,20 @@ impl Script {
     pub fn display_command(&self, display_full: bool, width: usize) -> &str {
         match display_full {
             true => &self.command,
-            false => {
-                match &self.command.lines().nth(0) {
-                    Some(line) => {
-                        match line.chars().count() {
-                            c if c <= width => line,
-                            c if c > width => &line[0..width],
-                            _ => "",
-                        }
-                    }
-                    None => &self.command,
-                }
-            }
+            false => match &self.command.lines().nth(0) {
+                Some(line) => match line.chars().count() {
+                    c if c <= width => line,
+                    c if c > width => &line[0..width],
+                    _ => "",
+                },
+                None => &self.command,
+            },
         }
     }
     /// Runs the script inline using something like sh -c "<script>" or python -c "<script."...
     pub fn run_with_cli_interpreter(
         &self,
-        interpreter: &Vec<String>,
+        interpreter: &[String],
         args: Vec<String>,
     ) -> PierResult<Output> {
         // First item in interpreter is the binary

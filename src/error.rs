@@ -1,11 +1,11 @@
 use enum_kinds::EnumKind;
-use scrawl;
 use snafu::Snafu;
 use std::path::PathBuf;
 
 #[derive(Snafu, Debug, EnumKind)]
 #[enum_kind(PierErrorKind)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
+#[snafu(context(suffix(false)))]
 pub enum PierError {
     #[snafu(display("error: Unable to read config from file {}: {} ", path.display(), source))]
     ConfigRead {
@@ -50,10 +50,10 @@ pub enum PierError {
     ConfigInitFileAlreadyExists { path: PathBuf },
 
     #[snafu(display(
-        "error: EditorError: Failed when trying to get input from editor {}",
-        source
+        "error: EditorError: Failed when trying to get input from editor: {}",
+        message
     ))]
-    EditorError { source: scrawl::error::ScrawlError },
+    EditorError { message: String },
 
     #[snafu(display("error: Failed when trying to create executable tempfile. {}", source))]
     ExecutableTempFileCreate { source: std::io::Error },
