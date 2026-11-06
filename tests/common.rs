@@ -38,14 +38,14 @@ pub fn setup_cli(content: &str) -> (ChildPath, TestEnv, Command) {
 
     cmd.current_dir(te.dir.path());
 
-    cmd.args(&["-c", cfg.path().to_str().unwrap()]);
+    cmd.args(["-c", cfg.path().to_str().unwrap()]);
 
     (cfg, te, cmd)
 }
 
 pub fn setup_lib(content: &str) -> (ChildPath, TestEnv, pier::PierResult<Pier>) {
     let (cfg, te) = setup_dir(content);
-    let path = te.dir.path().join(&cfg.path());
+    let path = te.dir.path().join(cfg.path());
     let lib = Pier::from_file(path, false);
     (cfg, te, lib)
 }

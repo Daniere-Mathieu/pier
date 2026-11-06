@@ -54,21 +54,21 @@ macro_rules! pier_test {
     (cli => $name:ident, cfg => $content:expr, $func:expr) => {
         #[test]
         fn $name() {
-            let (cfg, _dir, cmd) = crate::common::setup_cli(trim!($content));
+            let (cfg, _dir, cmd) = $crate::common::setup_cli(trim!($content));
             $func(cfg, cmd)
         }
     };
     (lib => $name:ident, cfg => $content:expr, $func:expr) => {
         #[test]
         fn $name() {
-            let (cfg, _dir, lib) = crate::common::setup_lib(trim!($content));
+            let (cfg, _dir, lib) = $crate::common::setup_lib(trim!($content));
             $func(cfg, lib.expect("Failed to load config file."))
         }
     };
     (basic => $name:ident, $func:expr) => {
         #[test]
         fn $name() {
-            let dir = crate::common::TestEnv::new();
+            let dir = $crate::common::TestEnv::new();
             $func(dir)
         }
     };
