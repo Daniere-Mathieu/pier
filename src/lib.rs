@@ -472,6 +472,87 @@ impl Pier {
 
         Ok(())
     }
+
+    /// Add tags to an existing script.
+    pub fn add_tags(&mut self, alias: &str, new_tags: Vec<String>) -> PierResult<()> {
+        ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
+
+        let script = self.config.scripts.get_mut(alias).context(AliasNotFound {
+            alias: alias.to_string(),
+        })?;
+
+        let tags = script.tags.get_or_insert_with(Vec::new);
+        for tag in &new_tags {
+            if !tags.contains(tag) {
+                tags.push(tag.clone());
+            }
+        }
+
+        println!("Added tags [{}] to {}", new_tags.join(", "), alias);
+        Ok(())
+    }
+
+    /// Remove tags from an existing script.
+    pub fn remove_tags(&mut self, alias: &str, tags_to_remove: Vec<String>) -> PierResult<()> {
+        ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
+
+        let script = self.config.scripts.get_mut(alias).context(AliasNotFound {
+            alias: alias.to_string(),
+        })?;
+
+        if let Some(ref mut tags) = script.tags {
+            tags.retain(|t| !tags_to_remove.contains(t));
+            if tags.is_empty() {
+                script.tags = None;
+            }
+        }
+
+        println!(
+            "Removed tags [{}] from {}",
+            tags_to_remove.join(", "),
+            alias
+        );
+        Ok(())
+    }
+
+    /// List all unique tags across all scripts.
+    pub fn list_tags(&self) -> PierResult<()> {
+        ensure!(!self.config.scripts.is_empty(), NoScriptsExists);
+
+        let mut all_tags = std::collections::BTreeSet::new();
+        for script in self.config.scripts.values() {
+            if let Some(ref tags) = script.tags {
+                for tag in tags {
+                    all_tags.insert(tag.clone());
+                }
+            }
+        }
+
+        for tag in &all_tags {
+            println!("{}", tag);
+        }
+        Ok(())
+    }
+
+    /// Return sorted list of aliases for use in interactive selection.
+    pub fn aliases(&self) -> Vec<String> {
+        self.config.scripts.keys().cloned().collect()
+    }
+
+    /// Build display labels for fuzzy selection: "alias — description or command".
+    pub fn alias_labels(&self) -> Vec<String> {
+        self.config
+            .scripts
+            .iter()
+            .map(|(alias, script)| {
+                let detail = script
+                    .description
+                    .as_deref()
+                    .unwrap_or_else(|| script.display_command(false, 60));
+                format!("{} — {}", alias, detail)
+            })
+            .collect()
+    }
 }
 
 pub fn open_editor(content: Option<&str>) -> PierResult<String> {
